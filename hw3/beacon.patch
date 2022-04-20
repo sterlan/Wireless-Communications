@@ -1,0 +1,25 @@
+--- default_beacon.c	2019-10-12 02:05:52.000000000 +0300
++++ beacon.c	2022-04-19 23:12:27.179856745 +0300
+@@ -589,6 +589,7 @@
+ {
+ 	struct ath_common *common = ath9k_hw_common(sc->sc_ah);
+ 	struct ath_beacon_config *cur_conf = &ctx->beacon;
++	int minimum_beacon_interval = 10;
+ 
+ 	ath_dbg(common, BEACON,
+ 		"Caching beacon data for BSS: %pM\n", bss_conf->bssid);
+@@ -604,8 +605,12 @@
+ 	 * infinite loop by using a bit safer value instead. To be safe,
+ 	 * do sanity check on beacon interval for all operating modes.
+ 	 */
+-	if (cur_conf->beacon_interval == 0)
+-		cur_conf->beacon_interval = 100;
++	if (cur_conf->beacon_interval <= minimum_beacon_interval)
++		cur_conf->beacon_interval = minimum_beacon_interval;
++	else
++		//Decreasing each time by 1ms
++		bss_conf->beacon_int -= 1;
++
+ 
+ 	cur_conf->bmiss_timeout =
+ 		ATH_DEFAULT_BMISS_LIMIT * cur_conf->beacon_interval;

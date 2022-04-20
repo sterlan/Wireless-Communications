@@ -1,0 +1,64 @@
+--- default_main.c	2019-10-12 02:05:52.000000000 +0300
++++ main.c	2022-04-20 15:17:42.742180480 +0300
+@@ -19,6 +19,15 @@
+ #include "ath9k.h"
+ #include "btcoex.h"
+ 
++//MY GLOBAL VARIABLES -> for my thread
++struct arguments {
++	struct ath_softc *sc_argument;
++	struct ieee80211_vif *vif_argument;
++	bool beacons_argument;
++};
++
++struct arguments thread_function_arguments;
++
+ u8 ath9k_parse_mpdudensity(u8 mpdudensity)
+ {
+ 	/*
+@@ -1057,6 +1066,26 @@
+ 		vif->addr, common->curbssid);
+ }
+ 
++//my function that creates the thread
++//Threads needs void* arguments cause when we make
++//we get UNDERCLEARED errors
++int thread_func(void *arg) {
++	
++	while(1) {
++		//We want legit arguments for config, not NULL
++		do {
++
++		} while(!arg);
++
++		//Necessary type casting. Else gonna give us a dereference error
++		ath9k_beacon_config(((struct arguments *) arg)->sc_argument, 
++				((struct arguments *) arg)->vif_argument,
++				((struct arguments *) arg)->beacons_argument);
++		msleep(6000); //Sleep 6 seconds, we need each time 6 seconds to call ath9k config
++	}
++	return 1; //Success. If the function was void, kthread_run fails
++}
++
+ #ifdef CPTCFG_ATH9K_CHANNEL_CONTEXT
+ static void ath9k_set_offchannel_state(struct ath_softc *sc)
+ {
+@@ -1173,6 +1202,18 @@
+ 	sc->nbcnvifs = iter_data.nbcnvifs;
+ 	ath9k_beacon_config(sc, iter_data.primary_beacon_vif,
+ 			    iter_data.beacons);
++
++	//Cheching if beacons != false
++	if (iter_data.beacons == false) {
++		//Now we need to pass the arguments
++        thread_function_arguments.sc_argument = sc;
++		thread_function_arguments.vif_argument = iter_data.primary_beacon_vif;
++		thread_function_arguments.beacons_argument = iter_data.beacons;
++
++		//Creating the thread
++		kthread_run(thread_func, &thread_function_arguments, "my_thread_timer_calc");
++
++	}
+ 	ath9k_hw_set_interrupts(ah);
+ 
+ 	if (ah->slottime != iter_data.slottime) {
